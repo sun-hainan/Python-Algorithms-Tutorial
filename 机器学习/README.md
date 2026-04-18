@@ -10,33 +10,33 @@ _让机器从数据中学习_
 
 | 教程 | 难度 | 简介 |
 |------|------|------|
-| [线性回归](./线性回归.md) | ⭐ | 预测连续值，最小二乘法 |
-| [逻辑回归](./逻辑回归.md) | ⭐⭐ | 二分类，Sigmoid函数 |
-| [决策树](./决策树.md) | ⭐⭐ | 树形分类，信息增益 |
-| [随机森林](./随机森林.md) | ⭐⭐ | 决策树集成，Bagging |
-| [K-Means聚类](./K-Means聚类.md) | ⭐⭐ | 无监督聚类 |
-| [梯度下降](./梯度下降.md) | ⭐⭐ | 优化核心，动量/Adam |
+| [线性回归](./线性回归.md) | ⭐ | 预测连续值，最小二乘法推导 |
+| [逻辑回归](./逻辑回归.md) | ⭐⭐ | 二分类，Sigmoid函数，交叉熵损失 |
+| [决策树](./决策树.md) | ⭐⭐ | 树形分类，信息熵，信息增益 |
+| [随机森林](./随机森林.md) | ⭐⭐ | 决策树集成，Bagging，多数投票 |
+| [K-Means聚类](./K-Means聚类.md) | ⭐⭐ | 无监督聚类，肘部法则 |
+| [梯度下降](./梯度下降.md) | ⭐⭐ | 优化核心，Adam优化器 |
 
 ### 第二批：深度学习入门
 
 | 教程 | 难度 | 简介 |
 |------|------|------|
 | [感知机](./感知机.md) | ⭐⭐ | 神经网络基础，XOR问题 |
-| [BP反向传播](./BP反向传播.md) | ⭐⭐⭐ | 训练神经网络，链式法则 |
-| [卷积神经网络CNN](./卷积神经网络CNN.md) | ⭐⭐⭐ | 图像处理，局部感受野 |
-| [RNN与LSTM](./RNN与LSTM.md) | ⭐⭐⭐ | 序列数据，门控机制 |
-| [Attention注意力机制](./Attention注意力机制.md) | ⭐⭐⭐ | Q/K/V，权重分配 |
-| [Transformer](./Transformer.md) | ⭐⭐⭐ | 自注意力，位置编码 |
+| [BP反向传播](./BP反向传播.md) | ⭐⭐⭐ | 训练神经网络，链式法则，梯度推导 |
+| [卷积神经网络CNN](./卷积神经网络CNN.md) | ⭐⭐⭐ | 图像处理，卷积/池化，LeNet/AlexNet/ResNet |
+| [RNN与LSTM](./RNN与LSTM.md) | ⭐⭐⭐ | 序列数据，门控机制，梯度消失 |
+| [Attention注意力机制](./Attention注意力机制.md) | ⭐⭐⭐ | Q/K/V，注意力权重，多头注意力 |
+| [Transformer](./Transformer.md) | ⭐⭐⭐ | 自注意力，位置编码，Encoder/Decoder |
 
 ### 第三批：生成模型
 
 | 教程 | 难度 | 简介 |
 |------|------|------|
-| [VAE自编码器](./VAE自编码器.md) | ⭐⭐⭐ | 变分自编码，重参数化 |
+| [VAE自编码器](./VAE自编码器.md) | ⭐⭐⭐ | 变分自编码，重参数化，ELBO |
 | [GAN生成对抗网络](./GAN生成对抗网络.md) | ⭐⭐⭐ | 对抗训练，生成器/判别器 |
-| [扩散模型DDPM](./扩散模型DDPM.md) | ⭐⭐⭐ | 去噪扩散，前向/反向 |
-| [StableDiffusion](./StableDiffusion.md) | ⭐⭐⭐ | 隐空间扩散，CLIP/VAE |
-| [LoRA](./LoRA.md) | ⭐⭐ | 低秩微调，高效适配 |
+| [扩散模型DDPM](./扩散模型DDPM.md) | ⭐⭐⭐ | 去噪扩散，前向/反向过程 |
+| [StableDiffusion](./StableDiffusion.md) | ⭐⭐⭐ | 隐空间扩散，CLIP/VAE/U-Net |
+| [LoRA](./LoRA.md) | ⭐⭐ | 低秩微调，高效适配大模型 |
 
 ---
 
@@ -57,7 +57,7 @@ _让机器从数据中学习_
                                                                            │
                                                         VAE ──→ GAN ──→ DDPM ──→ Stable Diffusion
                                                                            │
-                                                                    LoRA ──→ 微调应用
+                                                                    LoRA ──→ 高效微调
 ```
 
 ---
@@ -71,7 +71,7 @@ _让机器从数据中学习_
 
 ### 深度学习
 - **从零实现**：NumPy 手写每个算法
-- **PyTorch 应用**：工业级代码示例
+- **PyTorch应用**：工业级代码示例
 - **图解过程**：数据流动、梯度传递可视化
 
 ### 生成模型
@@ -84,8 +84,7 @@ _让机器从数据中学习_
 ## 🛠️ 环境准备
 
 ```bash
-# Python 3.8+
-pip install numpy torch matplotlib scikit-learn
+pip install numpy torch matplotlib scikit-learn transformers diffusers peft
 ```
 
 ---
