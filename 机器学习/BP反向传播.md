@@ -1,54 +1,102 @@
 # BP反向传播
 
-_让神经网络学习的核心算法——链式法则的巧妙应用_
+> _让多层神经网络学习的核心算法——链式法则的精妙应用_
 
 ---
 
-## 📖 学习目标
+## 🎯 先看一个生活中的例子
 
-1. 理解前向传播和反向传播的完整流程
-2. 掌握链式法则在神经网络中的应用
-3. 推导并理解每一层的梯度计算
-4. 理解梯度消失和梯度爆炸问题
+### 例子：调整投篮力度
+
+假设你在练习投篮：
+
+```
+1. 你瞄准篮筐，投出一球
+2. 球偏右了，撞到框弹出
+3. 你分析：偏右 → 说明力气太大了 or 角度不对
+4. 你调整：下次少用点力，往左偏一点
+5. 再投，又偏左了
+6. 再调整：稍微增加力气
+7. 重复... 直到投进！
+```
+
+**关键：你不知道具体应该调整多少力气，但通过观察结果，慢慢调整，最终学会了投篮！**
 
 ---
 
-## 第一部分：整体框架
+## 🤔 BP反向传播是做什么的？
 
 ### 前向传播 vs 反向传播
 
 ```
 前向传播（Forward Pass）：
-输入 → 隐藏层1 → 隐藏层2 → ... → 输出层
-     计算每个神经元的值，逐层传递
+输入 ──→ 网络 ──→ 输出
+    就像投篮，看结果
 
 反向传播（Backward Pass）：
-输出误差 ← 反向传递 ← 计算梯度 ← 更新参数
-     从输出层开始，计算每个参数对误差的"贡献"
+误差 ←─── 反向传递 ←─── 计算梯度
+    就像分析为什么偏了，计算应该怎么调整
 ```
 
-### 形象比喻
+### 为什么要反向传播？
 
 ```
-想象你要调整一把狙击枪的参数来击中目标：
+单层感知机：直接算梯度，手动更新
 
-前向传播：扣扳机，看子弹打到哪里
-反向传播：分析弹着点，计算每个参数应该怎么调
-
-比如：
-- 子弹偏右上方 → 往左下方调整瞄准镜
-- 子弹偏左下方 → 往右上方调整瞄准镜
-- 风太大 → 需要更大调整
+多层神经网络：
+- 输入层 → 隐藏层1 → 隐藏层2 → ... → 输出层
+- 每一层都可能有很多神经元
+- 最后一层的误差，怎么传递到第一层？
+- 这就是 BP 反向传播解决的问题！
 ```
 
 ---
 
-## 第二部分：网络结构
+## 📐 链式法则：BP的数学基础
 
-### 两层神经网络示例
+### 什么是链式法则？
 
 ```
-输入层(2)    隐藏层(3)    输出层(1)
+如果 y = f(g(x))，那么：
+    dy/dx = df/dg × dg/dx
+
+换句话说：外层函数的导数 × 内层函数的导数
+```
+
+### 链式法则的例子
+
+```
+假设：
+    y = (x² + 1)³
+
+令 u = x² + 1，则 y = u³
+
+dy/du = 3u²
+du/dx = 2x
+
+所以：
+dy/dx = dy/du × du/dx = 3u² × 2x = 3(x²+1)² × 2x = 6x(x²+1)²
+```
+
+### 链式法则在神经网络中的应用
+
+```
+神经网络有很多层：
+    输入 x → L1 → L2 → L3 → 输出 y
+
+计算 ∂L/∂w₁：
+    ∂L/∂w₁ = ∂L/∂y × ∂y/∂L3 × ∂L3/∂L2 × ∂L2/∂L1 × ∂L1/∂w₁
+           = 链式法则把所有层的导数连乘起来！
+```
+
+---
+
+## 🏗️ 两层神经网络的结构
+
+### 网络图示
+
+```
+输入层(2)     隐藏层(3)     输出层(1)
 
 x₁ ─────────┬──→ h₁ ──┬──→ y ──→ ŷ
             │         │
@@ -63,183 +111,121 @@ x₂ ─────────┼──→ h₂ ──┘
 - b₂: 标量（输出层）
 ```
 
-### 激活函数
+### 数学公式
 
-```python
-def sigmoid(z):
-    """Sigmoid: 0~1之间"""
-    z = np.clip(z, -500, 500)
-    return 1 / (1 + np.exp(-z))
+```
+隐藏层：
+    z₁ = W₁x + b₁        (线性组合)
+    h = σ(z₁)            (激活函数，如 sigmoid 或 ReLU)
 
-def sigmoid_derivative(a):
-    """Sigmoid导数: a(1-a)"""
-    return a * (1 - a)
+输出层：
+    z₂ = W₂h + b₂        (线性组合)
+    ŷ = σ(z₂)            (激活函数)
 
-def relu(z):
-    """ReLU: max(0,z)"""
-    return np.maximum(0, z)
-
-def relu_derivative(z):
-    """ReLU导数: z>0时为1，否则为0"""
-    return (z > 0).astype(float)
+损失函数：
+    L = (y - ŷ)²         (均方误差)
 ```
 
 ---
 
-## 第三部分：前向传播
+## 🧮 反向传播数学推导
 
-### 数学推导
-
-```
-输入: x = (x₁, x₂)
-
-隐藏层:
-h = σ(W₁x + b₁)
-
-具体计算:
-h₁ = σ(w₁₁x₁ + w₂₁x₂ + b₁₁)
-h₂ = σ(w₁₂x₁ + w₂₂x₂ + b₁₂)
-h₃ = σ(w₁₃x₁ + w₂₃x₂ + b₁₃)
-
-输出层:
-y = σ(W₂h + b₂)
-
-最终输出:
-ŷ = σ(w₁₂₁h₁ + w₂₂₁h₂ + w₃₂₁h₃ + b₂)
-```
-
-### 代码实现
-
-```python
-def forward(self, X):
-    """
-    前向传播
-
-    X: 输入 (n_samples, n_features)
-    返回: 输出 (n_samples,)
-    """
-    n_samples = len(X)
-
-    # 隐藏层: z₁ = W₁X + b₁
-    self.z1 = np.dot(X, self.W1) + self.b1
-    # 激活: a₁ = σ(z₁)
-    self.a1 = sigmoid(self.z1)
-
-    # 输出层: z₂ = W₂a₁ + b₂
-    self.z2 = np.dot(self.a1, self.W2) + self.b2
-    # 激活: a₂ = σ(z₂)
-    self.a2 = sigmoid(self.z2)
-
-    return self.a2
-```
-
----
-
-## 第四部分：损失函数
-
-### 常用损失函数
-
-```python
-def mse_loss(y_true, y_pred):
-    """均方误差: 用于回归"""
-    return np.mean((y_true - y_pred) ** 2)
-
-def cross_entropy_loss(y_true, y_pred):
-    """交叉熵: 用于分类"""
-    eps = 1e-15
-    y_pred = np.clip(y_pred, eps, 1-eps)
-    return -np.mean(y_true * np.log(y_pred) + (1-y_true) * np.log(1-y_pred))
-```
-
-### 本章使用 MSE
+### 以单个样本为例
 
 ```
-L = (1/n) × Σ(y_i - ŷ_i)²
+给定：
+- 输入：x = (x₁, x₂)
+- 真实标签：y
+- 隐藏层激活：h = (h₁, h₂, h₃)
+- 输出：ŷ
 
-对于单个样本：
+目标：计算 ∂L/∂W₁ 和 ∂L/∂W₂ 等参数的梯度
+```
+
+### 第一步：前向传播（从前往后算）
+
+```
+1. 隐藏层线性组合：
+   z₁ = W₁x + b₁
+
+2. 隐藏层激活：
+   h = σ(z₁)
+
+3. 输出层线性组合：
+   z₂ = W₂h + b₂
+
+4. 输出激活：
+   ŷ = σ(z₂)
+
+5. 计算损失：
+   L = (y - ŷ)²
+```
+
+### 第二步：反向传播（从后往前算）
+
+#### 计算 ∂L/∂W₂
+
+```
 L = (y - ŷ)²
-```
+ŷ = σ(z₂)
+z₂ = W₂h + b₂
 
----
-
-## 第五部分：反向传播数学推导
-
-### 核心思想：链式法则
-
-```
 链式法则：
-如果 y = f(g(x))，则 dy/dx = f'(g(x)) × g'(x)
-
-神经网络中的链式法则：
 ∂L/∂W₂ = ∂L/∂ŷ × ∂ŷ/∂z₂ × ∂z₂/∂W₂
+
+逐个计算：
+1. ∂L/∂ŷ = 2(ŷ - y)
+
+2. ∂ŷ/∂z₂ = σ'(z₂) = ŷ(1 - ŷ)      [Sigmoid 导数]
+
+3. ∂z₂/∂W₂ = h                        [z₂ = W₂h + b₂]
+
+所以：
+∂L/∂W₂ = 2(ŷ - y) × ŷ(1 - ŷ) × h
 ```
 
-### 第一步：输出层梯度
+#### 计算 ∂L/∂b₂
 
 ```
-已知: L = (y - ŷ)² = (y - σ(z₂))²
-
-∂L/∂ŷ = 2(ŷ - y)
-
-∂ŷ/∂z₂ = σ'(z₂) = ŷ(1-ŷ)  [Sigmoid导数]
-
-∂z₂/∂W₂ = h  [z₂ = W₂h + b₂，所以∂z₂/∂W₂ = h]
-
-所以:
-∂L/∂W₂ = ∂L/∂ŷ × ∂ŷ/∂z₂ × ∂z₂/∂W₂
-       = 2(ŷ - y) × ŷ(1-ŷ) × h
+∂L/∂b₂ = ∂L/∂ŷ × ∂ŷ/∂z₂ × ∂z₂/∂b₂
+       = 2(ŷ - y) × ŷ(1 - ŷ) × 1
 ```
 
-```python
-# 输出层误差
-delta_out = (y_pred - y_true) * sigmoid_derivative(y_pred)
-# 或简写
-delta_out = y_pred - y_true  # 对于 MSE + Sigmoid
-
-# W₂ 梯度
-dW2 = np.dot(self.a1.T, delta_out) / n_samples
-db2 = np.sum(delta_out) / n_samples
-```
-
-### 第二步：传播到隐藏层
+#### 计算 ∂L/∂W₁
 
 ```
-我们需要计算 ∂L/∂h（误差对隐藏层输出的"敏感度"）
+∂L/∂W₂ 是输出层的梯度。
+现在要把误差传递给隐藏层。
 
-∂L/∂h = ∂L/∂z₂ × ∂z₂/∂h
-       = δ₂ × W₂
+∂L/∂h = ∂L/∂z₂ × ∂z₂/∂h = δ₂ × W₂
 
-然后:
-∂L/∂z₁ = ∂L/∂h × ∂h/∂z₁
-       = (∂L/∂h) × σ'(z₁)
+其中 δ₂ = 2(ŷ - y) × ŷ(1 - ŷ)（输出层误差）
 
-∂z₁/∂W₁ = X
-```
+然后传回上一层：
+∂L/∂z₁ = ∂L/∂h × ∂h/∂z₁ = δ₂W₂ × σ'(z₁)
 
-```python
-# 反向传播到隐藏层
-delta_h = np.dot(delta_out, self.W2.T) * sigmoid_derivative(self.a1)
-
-# W₁ 梯度
-dW1 = np.dot(X.T, delta_h) / n_samples
-db1 = np.sum(delta_h, axis=0) / n_samples
+∂L/∂W₁ = ∂L/∂z₁ × ∂z₁/∂W₁ = δ₂W₂σ'(z₁) × x
 ```
 
 ---
 
-## 第六部分：完整代码实现
+## 💻 代码实现
+
+### 两层神经网络类
 
 ```python
 import numpy as np
 
 class NeuralNetwork:
     """两层神经网络"""
-    def __init__(self, n_input, n_hidden, n_output):
+
+    def __init__(self, n_input, n_hidden, n_output, learning_rate=0.1):
         self.n_input = n_input
         self.n_hidden = n_hidden
         self.n_output = n_output
+        self.lr = learning_rate
 
-        # 初始化权重（使用 Xavier 初始化）
+        # 初始化权重（Xavier 初始化）
         self.W1 = np.random.randn(n_input, n_hidden) * np.sqrt(2.0 / n_input)
         self.b1 = np.zeros(n_hidden)
 
@@ -247,182 +233,243 @@ class NeuralNetwork:
         self.b2 = np.zeros(n_output)
 
     def sigmoid(self, z):
-        z = np.clip(z, -500, 500)
+        """Sigmoid 激活函数"""
+        z = np.clip(z, -500, 500)  # 防止溢出
         return 1 / (1 + np.exp(-z))
 
     def sigmoid_derivative(self, a):
+        """Sigmoid 导数：已知激活值 a，求导数值"""
         return a * (1 - a)
 
     def forward(self, X):
+        """
+        前向传播
+
+        X: (n_samples, n_input)
+        返回: 输出 (n_samples, n_output)
+        """
+        # 隐藏层
         self.z1 = np.dot(X, self.W1) + self.b1
         self.a1 = self.sigmoid(self.z1)
+
+        # 输出层
         self.z2 = np.dot(self.a1, self.W2) + self.b2
         self.a2 = self.sigmoid(self.z2)
+
         return self.a2
 
-    def backward(self, X, y_true, learning_rate):
-        n_samples = len(y_true)
+    def backward(self, X, y):
+        """
+        反向传播
 
-        # ===== 输出层梯度 =====
-        delta_out = (self.a2 - y_true) * self.sigmoid_derivative(self.a2)
-        dW2 = np.dot(self.a1.T, delta_out) / n_samples
-        db2 = np.sum(delta_out, axis=0) / n_samples
+        X: (n_samples, n_input)
+        y: (n_samples,) 真实标签
+        """
+        n = len(y)
 
-        # ===== 隐藏层梯度 =====
-        delta_h = np.dot(delta_out, self.W2.T) * self.sigmoid_derivative(self.a1)
-        dW1 = np.dot(X.T, delta_h) / n_samples
-        db1 = np.sum(delta_h, axis=0) / n_samples
+        # ===== 第1步：计算输出层误差 =====
+        # δ₂ = (ŷ - y) × σ'(z₂)
+        delta2 = (self.a2 - y.reshape(-1, 1)) * self.sigmoid_derivative(self.a2)
 
-        # ===== 更新参数 =====
-        self.W2 -= learning_rate * dW2
-        self.b2 -= learning_rate * db2
-        self.W1 -= learning_rate * dW1
-        self.b1 -= learning_rate * db1
+        # ===== 第2步：计算 W2 和 b2 的梯度 =====
+        dW2 = np.dot(self.a1.T, delta2) / n
+        db2 = np.sum(delta2, axis=0) / n
 
-    def train(self, X, y, epochs=1000, learning_rate=0.1, verbose=True):
+        # ===== 第3步：误差传递到隐藏层 =====
+        # δ₁ = δ₂ × W₂ × σ'(z₁)
+        delta1 = np.dot(delta2, self.W2.T) * self.sigmoid_derivative(self.a1)
+
+        # ===== 第4步：计算 W1 和 b1 的梯度 =====
+        dW1 = np.dot(X.T, delta1) / n
+        db1 = np.sum(delta1, axis=0) / n
+
+        # ===== 第5步：更新参数 =====
+        self.W2 -= self.lr * dW2
+        self.b2 -= self.lr * db2
+        self.W1 -= self.lr * dW1
+        self.b1 -= self.lr * db1
+
+    def fit(self, X, y, epochs=1000, verbose=True):
+        """训练神经网络"""
         for epoch in range(epochs):
+            # 前向传播
             y_pred = self.forward(X)
-            self.backward(X, y, learning_rate)
 
+            # 反向传播
+            self.backward(X, y)
+
+            # 打印进度
             if verbose and (epoch + 1) % 100 == 0:
-                loss = np.mean((y - y_pred) ** 2)
-                accuracy = np.mean((y_pred >= 0.5).astype(int) == y)
+                loss = np.mean((y_pred.flatten() - y) ** 2)
+                accuracy = np.mean((y_pred.flatten() >= 0.5).astype(int) == y)
                 print(f"Epoch {epoch+1:4d}: loss={loss:.4f}, accuracy={accuracy:.2%}")
 
+        return self
+
     def predict(self, X):
-        return (self.forward(X) >= 0.5).astype(int)
+        """预测"""
+        return (self.forward(X).flatten() >= 0.5).astype(int)
 ```
 
 ---
 
-## 第七部分：梯度消失与梯度爆炸
+## 🧪 完整例子：XOR 问题
+
+### XOR 为什么单层感知机解决不了？
+
+```python
+# XOR 数据
+X = np.array([
+    [0, 0],
+    [0, 1],
+    [1, 0],
+    [1, 1]
+])
+y = np.array([0, 1, 1, 0])
+
+print("=== XOR 问题 ===")
+print("真值表：")
+print("x1 x2 | y")
+print("---------")
+for i in range(4):
+    print(f"{X[i][0]}  {X[i][1]}  | {y[i]}")
+```
+
+### 用两层神经网络解决 XOR
+
+```python
+# 创建神经网络：2个输入，4个隐藏神经元，1个输出
+nn = NeuralNetwork(n_input=2, n_hidden=4, n_output=1, learning_rate=1.0)
+
+# 训练
+print("\n=== 训练过程 ===")
+nn.fit(X, y, epochs=5000, verbose=True)
+
+# 测试
+print("\n=== 预测结果 ===")
+predictions = nn.predict(X)
+for i in range(4):
+    print(f"输入: {X[i]} -> 预测: {predictions[i]} (真实: {y[i]})")
+
+print(f"\n准确率: {np.mean(predictions == y):.2%}")
+```
+
+### XOR 的决策边界可视化
+
+```python
+import matplotlib.pyplot as plt
+
+def plot_xor_decision_boundary(nn, X, y):
+    """画 XOR 的决策边界"""
+    h = 0.01  # 网格步长
+    x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
+    y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
+
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
+                         np.arange(y_min, y_max, h))
+
+    grid = np.c_[xx.ravel(), yy.ravel()]
+    Z = nn.predict(grid)
+    Z = Z.reshape(xx.shape)
+
+    plt.contourf(xx, yy, Z, alpha=0.3, cmap='coolwarm')
+    plt.scatter(X[:, 0], X[:, 1], c=y, edgecolors='k', s=50)
+    plt.title('XOR 决策边界（两层神经网络）')
+    plt.xlabel('x1')
+    plt.ylabel('x2')
+    plt.show()
+
+plot_xor_decision_boundary(nn, X, y)
+```
+
+---
+
+## ⚠️ 梯度消失和梯度爆炸
 
 ### 问题描述
 
 ```
-在反向传播中，梯度需要从输出层传播回输入层：
+反向传播时，梯度从后往前传：
 
-∂L/∂W₁ = ∂L/∂ŷ × ∂ŷ/∂h × ... × ∂h₁/∂W₁
+∂L/∂W₁ = ∂L/∂ŷ × ∂ŷ/∂h₃ × ∂h₃/∂h₂ × ... × ∂h₁/∂W₁
 
-如果每层的激活函数导数都小于1（如Sigmoid导数最大0.25），
+如果每层的激活函数导数都小于 1（如 Sigmoid 最大 0.25）：
 梯度会指数级衰减 → 梯度消失！
 
-如果每层的激活函数导数都大于1，
+如果激活函数导数都大于 1：
 梯度会指数级增长 → 梯度爆炸！
 ```
 
 ### Sigmoid 的问题
 
 ```python
-# Sigmoid 导数最大值
-max_derivative = 0.25  # 在 z=0 时
+# Sigmoid 导数的最大值
+print(f"Sigmoid 导数最大值: {max(0.25)}")  # 0.25（在 z=0 时）
 
-# 如果网络有 5 层
-# 梯度会被衰减 0.25^5 = 0.00098 ≈ 0.1%
-# 前面的层几乎学不到东西！
+# 5 层之后
+print(f"5层之后梯度: {0.25**5:.6f}")  # ≈ 0.0001，前几层几乎学不到
 ```
 
-### 解决方案
-
-```
-1. 使用 ReLU 激活函数
-   - 导数是 0 或 1
-   - 避免了梯度衰减
-
-2. 残差连接（ResNet）
-   - 提供"高速公路"让梯度直接传回去
-
-3. 批量归一化（BatchNorm）
-   - 让每层的输入分布稳定
-
-4. 梯度裁剪
-   - 限制梯度的最大/最小值
-```
-
----
-
-## 第八部分：PyTorch 实现
+### 解决方案：ReLU
 
 ```python
-import torch
-import torch.nn as nn
-import torch.optim as optim
+def relu(z):
+    """ReLU: max(0, z)"""
+    return np.maximum(0, z)
 
-# 定义网络
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        self.fc1 = nn.Linear(2, 4)
-        self.fc2 = nn.Linear(4, 1)
-        self.sigmoid = nn.Sigmoid()
+def relu_derivative(z):
+    """ReLU 导数"""
+    return (z > 0).astype(float)
 
-    def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = self.sigmoid(self.fc2(x))
-        return x
-
-# 创建网络
-model = Net()
-
-# 损失函数
-criterion = nn.MSELoss()
-
-# 优化器
-optimizer = optim.Adam(model.parameters(), lr=0.01)
-
-# 训练数据
-X = torch.FloatTensor([[0,0], [0,1], [1,0], [1,1]])
-y = torch.FloatTensor([[0], [1], [1], [0]])  # XOR
-
-# 训练
-for epoch in range(1000):
-    optimizer.zero_grad()    # 清零梯度
-    outputs = model(X)       # 前向传播
-    loss = criterion(outputs, y)  # 计算损失
-    loss.backward()          # 反向传播（自动计算梯度！）
-    optimizer.step()        # 更新参数
-
-    if (epoch + 1) % 200 == 0:
-        print(f"Epoch {epoch+1}: loss={loss.item():.4f}")
+# ReLU 导数：z > 0 时为 1，z < 0 时为 0
+# 不会梯度衰减！
 ```
 
 ---
 
-## 第九部分：训练过程的形象理解
+## 🔑 关键公式总结
+
+### 常用激活函数的导数
+
+| 激活函数 | 表达式 | 导数 |
+|---------|--------|------|
+| Sigmoid | σ(z) = 1/(1+e^(-z)) | σ'(z) = σ(z)(1-σ(z)) |
+| Tanh | tanh(z) | tanh'(z) = 1 - tanh²(z) |
+| ReLU | max(0, z) | 0 (z<0), 1 (z>0) |
+| Leaky ReLU | max(0.01z, z) | 0.01 (z<0), 1 (z>0) |
+
+### BP 反向传播核心公式
 
 ```
-初始状态：随机权重
-↓
-前向传播：输入通过随机网络，产生随机输出
-↓
-计算误差：输出和真实标签的差距
-↓
-反向传播：误差信号传回网络
-↓
-更新参数：每个权重根据"自己的贡献"调整
-↓
-重复：直到网络学会正确映射
+输出层误差：
+    δₗ = (ŷ - y) ⊙ σ'(zₗ)
 
-类比学习：
-- 神经网络 = 学生
-- 前向传播 = 做题
-- 计算误差 = 批改试卷
-- 反向传播 = 分析错题原因
-- 更新参数 = 理解错在哪里，下次做对
+隐藏层误差：
+    δₗ = (Wₗ₊₁ᵀδₗ₊₁) ⊙ σ'(zₗ)
+
+梯度：
+    ∂L/∂Wₗ = aₗ₋₁ᵀδₗ
+    ∂L/∂bₗ = Σδₗ
 ```
 
 ---
 
-## ✅ 小结
+## ✅ 本章小结
 
-1. **反向传播**是训练神经网络的核心算法
-2. 基于**链式法则**计算每个参数的梯度
-3. 前向传播算输出，反向传播算梯度
-4. 梯度 = 误差信号 × 激活导数 × 权重
-5. 常见问题：**梯度消失**和**梯度爆炸**
-6. 解决方案：ReLU、残差连接、BatchNorm、梯度裁剪
-7. PyTorch 可以自动求导，简化实现
+| 概念 | 解释 |
+|------|------|
+| 前向传播 | 输入→隐藏层→输出，计算预测值 |
+| 反向传播 | 从输出层开始，计算每个参数的梯度 |
+| 链式法则 | BP 的数学基础 |
+| 梯度 | 损失函数对参数的偏导数 |
+| 梯度消失 | 链式相乘导致梯度太小，前层学不到 |
+| 梯度爆炸 | 链式相乘导致梯度太大，参数剧烈振荡 |
+| 初始化 | Xavier/He 初始化，避免梯度问题 |
 
 ---
 
-_继续学习：下一章「卷积神经网络CNN」_
+## 🔗 继续学习
+
+现在你已经理解了神经网络的核心训练算法。接下来让我们学习专门处理图像的卷积神经网络 CNN！
+
+👉 [卷积神经网络CNN](./卷积神经网络CNN.md)
