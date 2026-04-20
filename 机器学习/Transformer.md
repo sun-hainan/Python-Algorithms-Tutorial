@@ -8,6 +8,9 @@
 
 ### 例子：翻译会议
 
+![transformer](transformer.png)
+
+
 想象你参加一个翻译会议：
 
 ```
